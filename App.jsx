@@ -1216,17 +1216,18 @@ const IMAGIN_KEY = "hrjavascript-mastery";
 // Preview-safe default: render the built-in gold silhouettes (no external image calls).
 // On the live site, flip this to true for real make/model photos.
 const SHOW_REAL_PHOTOS = true;
-function carPhotoUrl(rawName) {
+function carPhotoUrl(rawName, year) {
   const clean = rawName.split("(")[0].split(" / ")[0].trim();
   const parts = clean.split(" ");
   const make = parts[0];
-  const model = parts.slice(1).join(" ").replace(/\b(350|1500|LS|LX|EX|C7)\b/g, "").trim();
+  const model = parts.slice(1).join(" ").replace(/\b(350|1500|LS|LX|EX|C7|C8)\b/g, "").trim();
   return `https://cdn.imagin.studio/getimage?customer=${IMAGIN_KEY}` +
     `&make=${encodeURIComponent(make)}&modelFamily=${encodeURIComponent(model)}` +
+    (year ? `&modelYear=${year}` : "") +
     `&angle=23&fileType=png&width=640`;
 }
 
-function CarPhoto({ name, body }) {
+function CarPhoto({ name, body, year }) {
   const [failed, setFailed] = useState(false);
   const frame = {
     position: "relative", width: "100%", aspectRatio: "16 / 9", borderRadius: 12,
@@ -1252,7 +1253,7 @@ function CarPhoto({ name, body }) {
   }
   return (
     <div style={frame}>
-      <img src={carPhotoUrl(name)} alt={name} onError={() => setFailed(true)}
+      <img src={carPhotoUrl(name, year)} alt={name} onError={() => setFailed(true)}
         loading="lazy" decoding="async"
         style={{ width: "100%", height: "100%", objectFit: "contain", padding: "6px 10px" }} />
     </div>
@@ -1292,6 +1293,11 @@ function CarMatchmaker({ onHome }) {
   const containerRef = useRef(null);
 
   const currentStep = STEPS[step];
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+  }, [step]);
 
   const goNext = () => {
     if (step < STEPS.length - 1) {
@@ -1356,10 +1362,12 @@ function CarMatchmaker({ onHome }) {
 
   // Turn a scored car into a display object (shared by initial + "show more")
   function buildCarDisplay(c, a) {
+    const years = (c.years || "").match(/\d{4}/g);
     return {
       _key: c.name,
       name: c.name + (c.years ? ` (${c.years})` : ""),
       body: c.body,
+      year: years ? years[years.length - 1] : null,
       newOrUsed: c.displayAvail,
       priceRange: `$${(c.priceLow / 1000).toFixed(0)}K – $${(c.priceHigh / 1000).toFixed(0)}K`,
       whyThisCar: whyCar(c, a),
@@ -1509,7 +1517,7 @@ function CarMatchmaker({ onHome }) {
         borderRadius: 18, padding: 24, marginBottom: 16,
         animation: `fadeUp 0.5s ease both`,
       }}>
-        <CarPhoto name={car._key} body={car.body} />
+        <CarPhoto name={car._key} body={car.body} year={car.year} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div>
             {ranked && (
@@ -2341,6 +2349,7 @@ function CarMatchmaker({ onHome }) {
           {renderStep()}
         </div>
         <style>{`
+          * { box-sizing: border-box; }
           @keyframes contentIn {
             from { opacity: 0; transform: translateY(16px); }
             to { opacity: 1; transform: translateY(0); }
