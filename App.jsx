@@ -1365,7 +1365,7 @@ function CarMatchmaker({ onHome }) {
     const years = (c.years || "").match(/\d{4}/g);
     return {
       _key: c.name,
-      name: c.name + (c.years ? ` (${c.years})` : ""),
+      name: c.name,
       body: c.body,
       year: years ? years[years.length - 1] : null,
       newOrUsed: c.displayAvail,
