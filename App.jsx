@@ -1829,14 +1829,20 @@ function CarMatchmaker({ onHome }) {
           <Subtitle>When a car makes you look twice in a parking lot — what is it about the design? Tap as many as you like.</Subtitle>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              { value: "Sculpted & flowing — organic curves, athletic stance", icon: "🌊" },
-              { value: "Clean & minimal — simple lines, understated elegance", icon: "◻️" },
-              { value: "Bold & aggressive — wide stance, sharp edges, presence", icon: "🔱" },
-              { value: "Retro & classic — heritage cues, timeless proportions", icon: "📻" },
-              { value: "Rugged & capable — built tough, purposeful", icon: "🪨" },
-              { value: "Elegant & refined — luxury without being flashy", icon: "✨" },
+              { value: "Sculpted & flowing — organic curves, athletic stance", icon: "🌊",
+                desc: "like a Mazda MX-5, Jaguar F-Type, or Porsche 911" },
+              { value: "Clean & minimal — simple lines, understated elegance", icon: "◻️",
+                desc: "like a Tesla Model 3, Volvo, or Audi" },
+              { value: "Bold & aggressive — wide stance, sharp edges, presence", icon: "🔱",
+                desc: "like a Dodge Challenger, BMW M3, or Cadillac Escalade" },
+              { value: "Retro & classic — heritage cues, timeless proportions", icon: "📻",
+                desc: "like a Ford Bronco, Mini Cooper, or Mustang" },
+              { value: "Rugged & capable — built tough, purposeful", icon: "🪨",
+                desc: "like a Jeep Wrangler, 4Runner, or Land Rover Defender" },
+              { value: "Elegant & refined — luxury without being flashy", icon: "✨",
+                desc: "like a Lexus ES, Genesis G80, or Mercedes E-Class" },
             ].map((o) => (
-              <Pill key={o.value} label={o.value} icon={o.icon} selected={answers.vibe.includes(o.value)}
+              <Pill key={o.value} label={o.value} icon={o.icon} desc={o.desc} selected={answers.vibe.includes(o.value)}
                 onClick={() => toggleMulti("vibe", o.value)} />
             ))}
           </div>
