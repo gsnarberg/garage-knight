@@ -96,6 +96,99 @@ const C = {
 };
 const tone = { red: C.red, gold: C.gold, green: C.green };
 
+// Honest repair decision helper: is this repair even worth doing, given the car's value?
+// (Exact "fair price for this job in your area" needs real repair-cost data — a later layer.)
+function analyzeRepair(inp) {
+  const cost = num(inp.repairCost);
+  const value = num(inp.carValue);
+  if (cost <= 0 || value <= 0) return null;
+  const ratio = cost / value;
+  let verdict;
+  if (ratio >= 1)
+    verdict = { level: "red", label: "The repair costs about what the car's worth",
+      note: "When one fix approaches the car's whole value, it's usually time to seriously weigh replacing it rather than pouring money in." };
+  else if (ratio >= 0.5)
+    verdict = { level: "gold", label: "That's a big share of the car's value",
+      note: "Worth doing only if the car is otherwise solid and you'll keep it a while. If problems are piling up, weigh replacing it." };
+  else if (ratio >= 0.25)
+    verdict = { level: "gold", label: "Meaningful — but often worth it",
+      note: "If the car is otherwise reliable and you like it, a repair this size usually beats taking on a new car payment." };
+  else
+    verdict = { level: "green", label: "Usually worth fixing",
+      note: "This is modest next to the car's value. Fixing a car you already like almost always beats a new monthly payment." };
+  return { cost, value, ratio, verdict };
+}
+
+function RepairCheck({ onHome }) {
+  const [what, setWhat] = useState("");
+  const [repairCost, setRepairCost] = useState("");
+  const [carValue, setCarValue] = useState("");
+  const r = useMemo(() => analyzeRepair({ repairCost, carValue }), [repairCost, carValue]);
+
+  const guidance = [
+    "Get 2–3 quotes. An independent shop often beats the dealer by 20–40% on labor.",
+    "Ask for it itemized — parts vs. labor, and whether parts are OEM or aftermarket.",
+    "Ask \"what happens if I wait?\" Some repairs are safety-critical; others can hold a while.",
+    "Be wary of \"while we're in there…\" add-ons you didn't come in for.",
+  ];
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'DM Sans', sans-serif",
+      padding: "28px 18px 60px", maxWidth: 560, margin: "0 auto" }}>
+      <style>{`* { box-sizing: border-box; } input:focus, textarea:focus { outline: none; border-color: rgba(207,170,90,0.5) !important; }`}</style>
+
+      {onHome && (
+        <button onClick={onHome} style={{ background: "none", border: "none", color: "rgba(207,170,90,0.75)",
+          cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 600, padding: "2px 0", marginBottom: 16 }}>‹ Home</button>
+      )}
+      <div style={{ letterSpacing: 3, fontSize: 11, fontWeight: 700, color: C.gold, marginBottom: 8 }}>THE ANTI-DEALERSHIP</div>
+      <h1 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 44, lineHeight: 1, margin: "0 0 10px" }}>Repair Check</h1>
+      <p style={{ color: C.dim, fontSize: 15, lineHeight: 1.5, margin: "0 0 24px" }}>
+        Got a repair quote? See whether it's even worth doing — and how to make sure you're not overpaying.
+      </p>
+
+      <label style={{ display: "block", marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: C.faint, marginBottom: 6 }}>What needs fixing? (optional)</div>
+        <input value={what} onChange={(e) => setWhat(e.target.value)} placeholder="e.g. transmission, brakes, A/C compressor"
+          style={{ width: "100%", padding: "11px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)",
+            border: `1.5px solid ${C.line}`, color: C.text, fontSize: 15, fontFamily: "'DM Sans', sans-serif" }} />
+      </label>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 26 }}>
+        <Field label="Repair quote" v={repairCost} set={setRepairCost}
+          help={`The total the shop quoted for this repair. Ask for it in writing, itemized.`} />
+        <Field label="What's your car worth?" v={carValue} set={setCarValue}
+          help={`A rough resale value — a quick KBB or web search for your year, trim, and mileage gets you close.`} />
+      </div>
+
+      {r && (
+        <div key={r.verdict.level} style={{ animation: "rise 0.4s ease",
+          border: `1px solid ${tone[r.verdict.level]}`, background: `${tone[r.verdict.level]}14`,
+          borderRadius: 16, padding: "18px 20px", marginBottom: 16 }}>
+          <div style={{ fontSize: 12, letterSpacing: 2, fontWeight: 700, color: tone[r.verdict.level], marginBottom: 6 }}>SHOULD YOU DO IT?</div>
+          <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 28, lineHeight: 1.08, marginBottom: 10 }}>{r.verdict.label}</div>
+          <div style={{ fontSize: 14, color: C.dim, lineHeight: 1.55, marginBottom: 12 }}>{r.verdict.note}</div>
+          <div style={{ fontSize: 13, color: C.faint }}>This repair is about <strong style={{ color: C.text }}>{Math.round(r.ratio * 100)}%</strong> of your car's value.</div>
+        </div>
+      )}
+
+      <div style={{ border: `1px solid ${C.line}`, background: C.panel, borderRadius: 16, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ fontSize: 12, letterSpacing: 2, fontWeight: 700, color: C.gold, marginBottom: 12 }}>HOW TO NOT GET FLEECED</div>
+        {guidance.map((g, i) => (
+          <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: i < guidance.length - 1 ? 10 : 0 }}>
+            <span style={{ color: C.gold, fontSize: 15, lineHeight: 1.5 }}>›</span>
+            <span style={{ fontSize: 13.5, lineHeight: 1.55, color: C.dim }}>{g}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 11.5, color: C.faint, lineHeight: 1.5, textAlign: "center" }}>
+        We can't yet price-check this exact job for your area — that's coming. For now, these steps keep you protected. Not a substitute for a trusted mechanic.
+      </div>
+    </div>
+  );
+}
+
 function DealDecoder({ onHome }) {
   const [dealType, setDealType] = useState("lease");
   // Prefilled with the real-world CR-V LS example.
@@ -2419,10 +2512,14 @@ function Home({ go }) {
         body="Paste the dealer's numbers before you sign. We flag the traps and show what you're really paying."
         onClick={() => go("decoder")} />
 
+      <PathwayCard eyebrow="IN THE GARAGE" title="Is this repair worth it?"
+        body="Got a repair quote? See whether it's worth doing — and how to avoid overpaying at the shop."
+        onClick={() => go("repair")} />
+
       <div style={{ marginTop: 28, marginBottom: 12, fontSize: 11, letterSpacing: 2, fontWeight: 700, color: C.faint }}>COMING SOON</div>
       <div style={{ display: "flex", gap: 12 }}>
         <SoonCard title="Your Garage" body="Track service & remember what's due." />
-        <SoonCard title="Repair Check" body="Is this shop's quote actually fair?" />
+        <SoonCard title="Sell or Keep?" body="Is it time to move on from your car?" />
       </div>
 
       <div style={{ marginTop: 34, fontSize: 12, color: C.faint, textAlign: "center", lineHeight: 1.5 }}>
@@ -2436,5 +2533,6 @@ export default function App() {
   const [view, setView] = useState("home");
   if (view === "matchmaker") return <CarMatchmaker onHome={() => setView("home")} />;
   if (view === "decoder") return <DealDecoder onHome={() => setView("home")} />;
+  if (view === "repair") return <RepairCheck onHome={() => setView("home")} />;
   return <Home go={setView} />;
 }
