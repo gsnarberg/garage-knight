@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     // 2) Build a smart band around the car's own price level — this auto-rejects the
     //    salvage/parts junk at the bottom and the data-error typos at the top, and it
     //    adapts per car (a Rivian's band is nothing like a Civic's).
-    const lo = Math.max(HARD_MIN, mid * 0.3);
+    const lo = Math.max(HARD_MIN, mid * 0.4);
     const hi = Math.min(HARD_MAX, mid * 2.5);
 
     // 3) Sample the clean low and high ends within that band.
