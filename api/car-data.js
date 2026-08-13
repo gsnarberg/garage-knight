@@ -6,10 +6,14 @@
 //
 // Requires a Vercel environment variable named AUTODEV_API_KEY.
 
+const MIN_PRICE = 2000;    // below this = deposits, parts cars, data errors — ignore
+const MAX_PRICE = 300000;  // above this = typos / exotics — ignore
+const MIN_SAMPLE = 5;      // need at least this many real listings to trust a range
+
 export default async function handler(req, res) {
   const make = String(req.query.make || "").trim();
   const model = String(req.query.model || "").trim();
-  const year = String(req.query.year || "").trim(); // "2023" or a range like "2018-2024"
+  const year = String(req.query.year || "").trim(); // "2023" or a range like "2018-2025"
 
   if (!make || !model) {
     res.status(400).json({ error: "make and model are required" });
@@ -18,7 +22,6 @@ export default async function handler(req, res) {
 
   const key = process.env.AUTODEV_API_KEY;
   if (!key) {
-    // No key configured yet — tell the app to fall back to its stored estimate.
     res.status(200).json({ priceLow: null, priceHigh: null, source: "no-key" });
     return;
   }
@@ -27,15 +30,18 @@ export default async function handler(req, res) {
   p.set("vehicle.make", make);
   p.set("vehicle.model", model);
   if (year) p.set("vehicle.year", year);
-  p.set("select", "retailListing.price"); // smallest possible payload
-  p.set("sort", "price.asc");
-  p.set("limit", "20"); // Starter plan caps at 20 — plenty for a price range
+  // Ask Auto.dev to only return real, sanely-priced listings — this alone removes
+  // the deposit/parts-car junk that was dragging the floor down to a few hundred bucks.
+  p.set("retailListing.price", `${MIN_PRICE}-${MAX_PRICE}`);
+  p.set("select", "retailListing.price");
+  p.set("limit", "20"); // Starter plan cap — a rough but real market sample
+  // NOTE: intentionally NO price sort. Sorting cheapest-first would sample only the
+  // low end; the default (most-recent) gives a natural cross-section of the market.
 
   try {
     const upstream = await fetch(`https://api.auto.dev/listings?${p.toString()}`, {
       headers: { Authorization: `Bearer ${key}` },
     });
-
     if (!upstream.ok) throw new Error("upstream " + upstream.status);
 
     const json = await upstream.json();
@@ -46,28 +52,28 @@ export default async function handler(req, res) {
           ? row["retailListing.price"]
           : row?.retailListing?.price
       )
-      .filter((v) => typeof v === "number" && v > 500)
+      .filter((v) => typeof v === "number" && v >= MIN_PRICE && v <= MAX_PRICE)
       .sort((a, b) => a - b);
 
-    if (prices.length === 0) {
-      res.status(200).json({ priceLow: null, priceHigh: null, source: "no-listings" });
+    // Too few real listings to be trustworthy — tell the app to keep its stored estimate.
+    if (prices.length < MIN_SAMPLE) {
+      res.status(200).json({ priceLow: null, priceHigh: null, count: prices.length, source: "too-few" });
       return;
     }
 
-    // Trim outliers: 15th–85th percentile so one oddly-priced listing can't skew it.
+    // Use the TYPICAL middle band (20th–80th percentile) so a couple of oddballs at
+    // either extreme can't distort the range people actually shop in.
     const at = (frac) =>
       prices[Math.min(prices.length - 1, Math.max(0, Math.round(frac * (prices.length - 1))))];
 
-    // Cache each car's price at Vercel's edge for ~24h — keeps us deep inside the free tier.
     res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=604800");
     res.status(200).json({
-      priceLow: at(0.15),
-      priceHigh: at(0.85),
+      priceLow: at(0.2),
+      priceHigh: at(0.8),
       count: prices.length,
       source: "auto.dev",
     });
   } catch (e) {
-    // Any hiccup → app falls back to its stored estimate. Never breaks.
     res.status(200).json({ priceLow: null, priceHigh: null, source: "error" });
   }
 }
