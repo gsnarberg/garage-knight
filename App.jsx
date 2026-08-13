@@ -1413,6 +1413,47 @@ function CarPhoto({ name, body, year }) {
   );
 }
 
+// Fetches a live price range from our /api/car-data service, falling back to the
+// car's stored estimate while loading or if anything fails (so it can never break).
+function useLivePrice(car) {
+  const [live, setLive] = useState(null);
+  useEffect(() => {
+    if (!car || !car._key) return;
+    let alive = true;
+    const clean = car._key.split("(")[0].split(" / ")[0].trim();
+    const parts = clean.split(" ");
+    const make = parts[0];
+    const model = parts.slice(1).join(" ");
+    if (!make || !model) return;
+    const q = new URLSearchParams({ make, model });
+    if (car.year) q.set("year", String(car.year));
+    try {
+      fetch(`/api/car-data?${q.toString()}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (alive && d && typeof d.priceLow === "number" && typeof d.priceHigh === "number") setLive(d);
+        })
+        .catch(() => {});
+    } catch (e) { /* no-op: keep the stored fallback */ }
+    return () => { alive = false; };
+  }, [car && car._key]);
+  if (live) return `$${Math.round(live.priceLow / 1000)}K – $${Math.round(live.priceHigh / 1000)}K`;
+  return car ? car.priceRange : "";
+}
+
+function MoreRow({ car }) {
+  const priceText = useLivePrice(car);
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+      gap: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
+      borderRadius: 12, padding: "13px 16px", marginBottom: 9 }}>
+      <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: "#ede8dc", lineHeight: 1.1 }}>{car.name}</span>
+      <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
+        color: car.newOrUsed === "used" ? "#82ad6a" : "#cfaa5a" }}>{car.newOrUsed} · {priceText}</span>
+    </div>
+  );
+}
+
 function CarMatchmaker({ onHome }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({
@@ -1503,8 +1544,9 @@ function CarMatchmaker({ onHome }) {
         if (top3.length === 0) throw new Error("No matches");
 
         const cars = top3.map(c => buildCarDisplay(c, answers));
+        const more = ranked.slice(3, 6).filter(c => c.score > -100).map(c => buildCarDisplay(c, answers));
         const philosophy = buildPhilosophy(answers, top3);
-        setResults({ cars, philosophy });
+        setResults({ cars, more, philosophy });
         setStep(resultsStepIdx);
       } catch (err) {
         console.error("Scoring error:", err);
@@ -1663,6 +1705,7 @@ function CarMatchmaker({ onHome }) {
     const medals = ["🥇", "🥈", "🥉"];
     const rankLabels = ["Best Match", "Strong Alternative", "Dark Horse"];
     const highlight = ranked && rank === 0;
+    const priceText = useLivePrice(car);
     return (
       <div style={{
         background: highlight ? "linear-gradient(135deg, rgba(207,170,90,0.1), rgba(207,170,90,0.02))" : "rgba(255,255,255,0.02)",
@@ -1691,7 +1734,7 @@ function CarMatchmaker({ onHome }) {
             color: car.newOrUsed === "used" ? "#8c8" : "#cfaa5a",
             border: car.newOrUsed === "used" ? "1px solid rgba(120,200,120,0.25)" : "1px solid rgba(207,170,90,0.25)",
             textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap", flexShrink: 0, marginLeft: 10,
-          }}>{car.newOrUsed} · {car.priceRange}</div>
+          }}>{car.newOrUsed} · {priceText}</div>
         </div>
 
         <div style={{ fontSize: 14, color: "rgba(237,232,220,0.7)", lineHeight: 1.6,
@@ -2404,6 +2447,16 @@ function CarMatchmaker({ onHome }) {
           </div>
 
           {results.cars.map((car, i) => <CarCard key={car._key} car={car} rank={i} />)}
+
+          {results.more && results.more.length > 0 && (
+            <div style={{ marginTop: 30 }}>
+              <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 700, color: "rgba(237,232,220,0.4)",
+                fontFamily: "'DM Sans', sans-serif", marginBottom: 12 }}>A FEW MORE THAT FIT</div>
+              {results.more.map((car) => (
+                <MoreRow key={car._key} car={car} />
+              ))}
+            </div>
+          )}
 
           {/* Explore more */}
           <div style={{ marginTop: 32, marginBottom: 8, padding: "22px 20px",
