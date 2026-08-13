@@ -1426,7 +1426,7 @@ function useLivePrice(car) {
     const model = parts.slice(1).join(" ");
     if (!make || !model) return;
     const q = new URLSearchParams({ make, model });
-    if (car.year) q.set("year", String(car.year));
+    if (car.yearRange) q.set("year", car.yearRange);
     try {
       fetch(`/api/car-data?${q.toString()}`)
         .then((r) => (r.ok ? r.json() : null))
@@ -1563,6 +1563,7 @@ function CarMatchmaker({ onHome }) {
       name: c.name,
       body: c.body,
       year: years ? years[years.length - 1] : null,
+      yearRange: c.years ? c.years.replace(/[–—]/g, "-").replace(/\s+/g, "") : null,
       newOrUsed: c.displayAvail,
       priceRange: `$${(c.priceLow / 1000).toFixed(0)}K – $${(c.priceHigh / 1000).toFixed(0)}K`,
       whyThisCar: whyCar(c, a),
