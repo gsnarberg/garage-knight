@@ -1415,6 +1415,15 @@ function CarPhoto({ name, body, year }) {
 
 // Fetches a live price range from our /api/car-data service, falling back to the
 // car's stored estimate while loading or if anything fails (so it can never break).
+// ~7.5% APR, 72-month loan, $0 down — a conservative monthly estimate. Always shown
+// alongside the total, never hiding it (the opposite of the dealership's monthly trick).
+function monthlyPayment(principal) {
+  const r = 0.075 / 12, n = 72;
+  return Math.round((principal * r / (1 - Math.pow(1 + r, -n))) / 5) * 5;
+}
+const totalLabel = (lo, hi) => `$${Math.round(lo / 1000)}K – $${Math.round(hi / 1000)}K`;
+const monthlyLabel = (lo, hi) => `≈$${monthlyPayment(lo)}–$${monthlyPayment(hi)}/mo`;
+
 function useLivePrice(car) {
   const [live, setLive] = useState(null);
   useEffect(() => {
@@ -1437,19 +1446,21 @@ function useLivePrice(car) {
     } catch (e) { /* no-op: keep the stored fallback */ }
     return () => { alive = false; };
   }, [car && car._key]);
-  if (live) return `$${Math.round(live.priceLow / 1000)}K – $${Math.round(live.priceHigh / 1000)}K`;
-  return car ? car.priceRange : "";
+  const low = live ? live.priceLow : (car ? car.priceLowNum : 0);
+  const high = live ? live.priceHigh : (car ? car.priceHighNum : 0);
+  return { low, high };
 }
 
-function MoreRow({ car }) {
-  const priceText = useLivePrice(car);
+function MoreRow({ car, finance }) {
+  const { low, high } = useLivePrice(car);
+  const price = finance ? monthlyLabel(low, high) : totalLabel(low, high);
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
       gap: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
       borderRadius: 12, padding: "13px 16px", marginBottom: 9 }}>
       <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: "#ede8dc", lineHeight: 1.1 }}>{car.name}</span>
       <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
-        color: car.newOrUsed === "used" ? "#82ad6a" : "#cfaa5a" }}>{car.newOrUsed} · {priceText}</span>
+        color: car.newOrUsed === "used" ? "#82ad6a" : "#cfaa5a" }}>{car.newOrUsed} · {price}</span>
     </div>
   );
 }
@@ -1566,6 +1577,8 @@ function CarMatchmaker({ onHome }) {
       yearRange: c.years ? c.years.replace(/[–—]/g, "-").replace(/\s+/g, "") : null,
       newOrUsed: c.displayAvail,
       priceRange: `$${(c.priceLow / 1000).toFixed(0)}K – $${(c.priceHigh / 1000).toFixed(0)}K`,
+      priceLowNum: c.priceLow,
+      priceHighNum: c.priceHigh,
       whyThisCar: whyCar(c, a),
       visceral: c.visceral,
       watchOut: c.watchOut,
@@ -1706,7 +1719,8 @@ function CarMatchmaker({ onHome }) {
     const medals = ["🥇", "🥈", "🥉"];
     const rankLabels = ["Best Match", "Strong Alternative", "Dark Horse"];
     const highlight = ranked && rank === 0;
-    const priceText = useLivePrice(car);
+    const { low, high } = useLivePrice(car);
+    const finance = answers.paymentMethod === "finance";
     return (
       <div style={{
         background: highlight ? "linear-gradient(135deg, rgba(207,170,90,0.1), rgba(207,170,90,0.02))" : "rgba(255,255,255,0.02)",
@@ -1729,13 +1743,20 @@ function CarMatchmaker({ onHome }) {
               {car.name}
             </div>
           </div>
-          <div style={{ padding: "5px 12px", borderRadius: 20, fontSize: 11,
-            fontFamily: "'DM Sans', sans-serif", fontWeight: 600,
-            background: car.newOrUsed === "used" ? "rgba(120,200,120,0.12)" : "rgba(207,170,90,0.12)",
-            color: car.newOrUsed === "used" ? "#8c8" : "#cfaa5a",
-            border: car.newOrUsed === "used" ? "1px solid rgba(120,200,120,0.25)" : "1px solid rgba(207,170,90,0.25)",
-            textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap", flexShrink: 0, marginLeft: 10,
-          }}>{car.newOrUsed} · {priceText}</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, marginLeft: 10, gap: 4 }}>
+            <div style={{ padding: "5px 12px", borderRadius: 20, fontSize: 11,
+              fontFamily: "'DM Sans', sans-serif", fontWeight: 600,
+              background: car.newOrUsed === "used" ? "rgba(120,200,120,0.12)" : "rgba(207,170,90,0.12)",
+              color: car.newOrUsed === "used" ? "#8c8" : "#cfaa5a",
+              border: car.newOrUsed === "used" ? "1px solid rgba(120,200,120,0.25)" : "1px solid rgba(207,170,90,0.25)",
+              textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap",
+            }}>{car.newOrUsed} · {finance ? monthlyLabel(low, high) : totalLabel(low, high)}</div>
+            {finance && (
+              <div style={{ fontSize: 10.5, color: "rgba(237,232,220,0.4)", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>
+                {totalLabel(low, high)} total
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ fontSize: 14, color: "rgba(237,232,220,0.7)", lineHeight: 1.6,
@@ -2454,7 +2475,7 @@ function CarMatchmaker({ onHome }) {
               <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 700, color: "rgba(237,232,220,0.4)",
                 fontFamily: "'DM Sans', sans-serif", marginBottom: 12 }}>A FEW MORE THAT FIT</div>
               {results.more.map((car) => (
-                <MoreRow key={car._key} car={car} />
+                <MoreRow key={car._key} car={car} finance={answers.paymentMethod === "finance"} />
               ))}
             </div>
           )}
