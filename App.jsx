@@ -1465,7 +1465,183 @@ function MoreRow({ car, finance }) {
   );
 }
 
-function CarMatchmaker({ onHome }) {
+function ZeroInOption({ label, sub, selected, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      display: "block", width: "100%", textAlign: "left", cursor: "pointer",
+      background: selected ? "rgba(207,170,90,0.14)" : "rgba(255,255,255,0.03)",
+      border: `1.5px solid ${selected ? "#cfaa5a" : "rgba(255,255,255,0.08)"}`,
+      borderRadius: 14, padding: "16px 18px", marginBottom: 10, color: "#ede8dc",
+      fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s ease",
+    }}>
+      <div style={{ fontSize: 15.5, fontWeight: 600, marginBottom: sub ? 3 : 0 }}>{label}</div>
+      {sub && <div style={{ fontSize: 13, color: "rgba(237,232,220,0.5)", lineHeight: 1.45 }}>{sub}</div>}
+    </button>
+  );
+}
+
+function ZeroIn({ car, answers, onBack, onNavigate }) {
+  const [step, setStep] = useState(0);
+  const [trim, setTrim] = useState(null);
+  const [condition, setCondition] = useState(null);
+  const [comfortable, setComfortable] = useState("");
+  const [ceiling, setCeiling] = useState("");
+  const [mileage, setMileage] = useState(null);
+  const { low, high } = useLivePrice(car);
+  useEffect(() => { window.scrollTo(0, 0); }, [step]);
+
+  const K = { bg: "#1b1915", gold: "#cfaa5a", text: "#ede8dc", dim: "rgba(237,232,220,0.55)",
+    faint: "rgba(237,232,220,0.35)", red: "#e0694f", green: "#82ad6a", line: "rgba(255,255,255,0.08)" };
+  const num = (v) => { const n = parseFloat(String(v).replace(/[^0-9.]/g, "")); return isNaN(n) ? 0 : n; };
+  const STEPS = ["trim", "condition", "budget", "mileage", "target"];
+  const cur = STEPS[step];
+  const name = car.name;
+
+  const canNext = () => {
+    if (cur === "trim") return !!trim;
+    if (cur === "condition") return !!condition;
+    if (cur === "budget") return num(comfortable) > 0;
+    if (cur === "mileage") return !!mileage;
+    return true;
+  };
+
+  // Sharpen the full range into a target sub-range from their choices.
+  const range = Math.max(0, high - low);
+  const conditionPos = condition === "new" ? 0.72 : 0.34;
+  const trimAdj = trim === "loaded" ? 0.16 : trim === "essentials" ? -0.16 : 0;
+  const mileAdj = mileage === "high" ? -0.06 : mileage === "low" ? 0.06 : 0;
+  const center = Math.min(0.88, Math.max(0.16, conditionPos + trimAdj + mileAdj));
+  const round1k = (n) => Math.round(n / 1000) * 1000;
+  const tLow = round1k(low + Math.max(0, center - 0.13) * range);
+  const tHigh = round1k(low + Math.min(1, center + 0.13) * range);
+  const tMoHigh = monthlyPayment(tHigh);
+
+  const comfMo = num(comfortable), ceilMo = num(ceiling);
+  let budget = null;
+  if (comfMo > 0) {
+    if (tMoHigh <= comfMo) budget = { level: "green", msg: `That lands comfortably inside your $${comfMo}/mo — no stretching needed. Nicely done.` };
+    else if (ceilMo > 0 && tMoHigh <= ceilMo) budget = { level: "gold", msg: `This nudges toward the top of your range (about $${tMoHigh}/mo vs your $${comfMo}/mo comfort zone). You can — but remember, every $50/mo you don't spend is roughly $3,600 back in your pocket over a 6-year loan.` };
+    else budget = { level: "red", msg: `Heads up — this target runs past even your ceiling. Rather than stretch, pull one of the levers below and stay honest to your budget.` };
+  }
+
+  const yearGuide = condition === "new" ? "the newest one or two model years"
+    : "roughly 3–5 years old — where the steepest depreciation is already behind it";
+  const trimWord = trim === "loaded" ? "a top trim" : trim === "essentials" ? "a base or mid trim" : "a mid trim";
+  const mileWord = mileage === "low" ? "lower-mileage" : mileage === "high" ? "higher-mileage" : "average-mileage";
+  const levers = ["Drop one trim level", "Go a year or two older", "Accept a few more miles on a reliable car"];
+
+  const wrap = (children) => (
+    <div style={{ minHeight: "100vh", background: K.bg, color: K.text, fontFamily: "'DM Sans', sans-serif", padding: "28px 20px 60px", maxWidth: 560, margin: "0 auto" }}>
+      <style>{`*{box-sizing:border-box;} input:focus{outline:none;border-color:rgba(207,170,90,0.5)!important;}`}</style>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: "rgba(207,170,90,0.75)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 600, padding: "2px 0", marginBottom: 14 }}>‹ Back to matches</button>
+      <div style={{ letterSpacing: 2, fontSize: 11, fontWeight: 700, color: K.gold, marginBottom: 18 }}>ZERO IN · {name.toUpperCase()}</div>
+      {children}
+    </div>
+  );
+  const dots = (
+    <div style={{ display: "flex", gap: 6, marginBottom: 26 }}>
+      {STEPS.slice(0, 4).map((s, i) => (
+        <div key={s} style={{ flex: 1, height: 3, borderRadius: 3, background: i <= Math.min(step, 3) ? K.gold : "rgba(255,255,255,0.09)" }} />
+      ))}
+    </div>
+  );
+  const nextBtn = (
+    <button onClick={() => setStep(step + 1)} disabled={!canNext()} style={{
+      width: "100%", marginTop: 20, padding: "15px", borderRadius: 14, cursor: canNext() ? "pointer" : "default",
+      background: canNext() ? K.gold : "rgba(255,255,255,0.06)", color: canNext() ? "#1b1915" : "rgba(237,232,220,0.3)",
+      border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700,
+    }}>Continue</button>
+  );
+  const h1 = (t) => <h1 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 33, lineHeight: 1.1, margin: "0 0 8px" }}>{t}</h1>;
+  const sub = (t) => <p style={{ color: K.dim, fontSize: 14.5, lineHeight: 1.5, margin: "0 0 22px" }}>{t}</p>;
+  const field = (label, val, set, ph) => (
+    <label style={{ display: "block", marginBottom: 14 }}>
+      <div style={{ fontSize: 12.5, color: K.faint, marginBottom: 6 }}>{label}</div>
+      <div style={{ position: "relative" }}>
+        <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: K.faint }}>$</span>
+        <input inputMode="decimal" value={val} onChange={(e) => set(e.target.value)} placeholder={ph}
+          style={{ width: "100%", padding: "12px 12px 12px 24px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1.5px solid ${K.line}`, color: K.text, fontSize: 15, fontFamily: "'DM Sans', sans-serif" }} />
+      </div>
+    </label>
+  );
+
+  if (cur === "trim") return wrap(<>{dots}{h1("How dressed-up do you want it?")}{sub("No need to know trim names — just the vibe.")}
+    <ZeroInOption label="Just the essentials" sub="Save the money; skip the fancy stuff." selected={trim === "essentials"} onClick={() => setTrim("essentials")} />
+    <ZeroInOption label="A few nice touches" sub="Comfortable middle — the popular choice." selected={trim === "middle"} onClick={() => setTrim("middle")} />
+    <ZeroInOption label="Load it up" sub="Leather, tech, the good stuff." selected={trim === "loaded"} onClick={() => setTrim("loaded")} />
+    {nextBtn}</>);
+
+  if (cur === "condition") return wrap(<>{dots}{h1("Brand new, or smart used?")}{sub("A gently-used one is often ~25–30% cheaper for ~90% of the car.")}
+    <ZeroInOption label="Brand new" sub="Latest model, full warranty — for a premium." selected={condition === "new"} onClick={() => setCondition("new")} />
+    <ZeroInOption label="Let someone else eat the depreciation" sub="A few years old — the smart-money sweet spot." selected={condition === "used"} onClick={() => setCondition("used")} />
+    {nextBtn}</>);
+
+  if (cur === "budget") {
+    const gap = ceilMo > 0 && comfMo > 0 && ceilMo > comfMo;
+    return wrap(<>{dots}{h1("What's the real budget?")}{sub("Two numbers keep us honest — the comfortable one, and the never-past-this one.")}
+      {field("Comfortable monthly payment", comfortable, setComfortable, "300")}
+      {field("Absolute ceiling (optional)", ceiling, setCeiling, "400")}
+      {gap && (
+        <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.55, color: K.dim, background: "rgba(207,170,90,0.07)", border: "1px solid rgba(207,170,90,0.22)", borderRadius: 12, padding: "12px 14px" }}>
+          We'll aim for your <strong style={{ color: K.text }}>comfortable</strong> number and only reach toward the ceiling if we truly have to. Every $50/mo you don't spend is about <strong style={{ color: K.text }}>$3,600</strong> saved over a 6-year loan — money that stays yours.
+        </div>
+      )}
+      {nextBtn}</>);
+  }
+
+  if (cur === "mileage") return wrap(<>{dots}{h1("How do you feel about miles?")}{sub("On a reliable car, higher miles ≠ trouble — and they save you plenty.")}
+    <ZeroInOption label="Lowest miles I can get" sub="Peace of mind; pay a bit more." selected={mileage === "low"} onClick={() => setMileage("low")} />
+    <ZeroInOption label="A sensible middle" sub="Balance price and peace of mind." selected={mileage === "balanced"} onClick={() => setMileage("balanced")} />
+    <ZeroInOption label="Higher miles are fine if it saves money" sub="Smart on a dependable car." selected={mileage === "high"} onClick={() => setMileage("high")} />
+    {nextBtn}</>);
+
+  // target screen
+  return wrap(<>
+    <h1 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 34, lineHeight: 1.12, margin: "0 0 16px" }}>Here's your target.</h1>
+    <div style={{ border: "1px solid rgba(207,170,90,0.35)", background: "rgba(207,170,90,0.06)", borderRadius: 16, padding: "20px", marginBottom: 16 }}>
+      <div style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: 700, color: K.gold, marginBottom: 10 }}>GO SHOP FOR</div>
+      <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 23, lineHeight: 1.3, color: K.text, marginBottom: 14 }}>
+        {trimWord}, {mileWord} {name} — {yearGuide}.
+      </div>
+      <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+        <div><div style={{ fontSize: 11.5, color: K.faint, marginBottom: 2 }}>Target price</div>
+          <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 26, color: K.gold }}>{totalLabel(tLow, tHigh)}</div></div>
+        <div><div style={{ fontSize: 11.5, color: K.faint, marginBottom: 2 }}>Roughly</div>
+          <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 26, color: K.text }}>{monthlyLabel(tLow, tHigh)}</div></div>
+      </div>
+    </div>
+
+    {budget && (
+      <div style={{ border: `1px solid ${budget.level === "green" ? "rgba(130,173,106,0.4)" : budget.level === "gold" ? "rgba(207,170,90,0.4)" : "rgba(224,105,79,0.4)"}`,
+        background: budget.level === "green" ? "rgba(130,173,106,0.08)" : budget.level === "gold" ? "rgba(207,170,90,0.07)" : "rgba(224,105,79,0.08)",
+        borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
+        <div style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: 700, marginBottom: 6, color: budget.level === "green" ? K.green : budget.level === "gold" ? K.gold : K.red }}>
+          {budget.level === "green" ? "YOU'RE IN GREAT SHAPE" : "AN HONEST BUDGET CHECK"}
+        </div>
+        <div style={{ fontSize: 14, lineHeight: 1.55, color: K.dim }}>{budget.msg}</div>
+        {budget.level !== "green" && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 12, color: K.faint, marginBottom: 6 }}>Levers to stay comfortable:</div>
+            {levers.map((l, i) => (<div key={i} style={{ display: "flex", gap: 8, marginBottom: 4 }}><span style={{ color: K.gold }}>›</span><span style={{ fontSize: 13.5, color: K.dim }}>{l}</span></div>))}
+          </div>
+        )}
+      </div>
+    )}
+
+    <div style={{ border: `1px solid ${K.line}`, background: "rgba(255,255,255,0.02)", borderRadius: 14, padding: "16px 18px", marginBottom: 16, fontSize: 13, lineHeight: 1.55, color: K.dim }}>
+      <strong style={{ color: K.text }}>Smart-buyer benchmark (optional):</strong> the 20/3/8 rule — ~20% down, keep the loan to 3 years, payments under 8% of take-home. A gut-check the pros swear by.
+    </div>
+
+    <button onClick={() => onNavigate && onNavigate("decoder")} style={{ width: "100%", padding: "15px", borderRadius: 14, cursor: "pointer", background: K.gold, color: "#1b1915", border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Found one? Decode the deal →</button>
+    <button onClick={onBack} style={{ width: "100%", padding: "14px", borderRadius: 14, cursor: "pointer", background: "transparent", color: K.dim, border: `1px solid ${K.line}`, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600 }}>‹ Back to matches</button>
+
+    <div style={{ fontSize: 11.5, color: K.faint, lineHeight: 1.5, marginTop: 16, textAlign: "center" }}>
+      Target prices are estimates from current listings and your choices — a smart starting point, not an exact quote.
+    </div>
+  </>);
+}
+
+function CarMatchmaker({ onHome, onNavigate }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({
     lovedCars: [],
@@ -1489,6 +1665,7 @@ function CarMatchmaker({ onHome }) {
     techComfort: null,
   });
   const [results, setResults] = useState(null);
+  const [zeroInCar, setZeroInCar] = useState(null);
   const [extraBatches, setExtraBatches] = useState([]);
   const [loadingMore, setLoadingMore] = useState(null);
   const [showWarranty, setShowWarranty] = useState(false);
@@ -1785,6 +1962,11 @@ function CarMatchmaker({ onHome }) {
           <div style={{ fontSize: 13.5, color: "rgba(237,232,220,0.55)", lineHeight: 1.55,
             fontFamily: "'DM Sans', sans-serif" }}>{car.proTip}</div>
         </div>
+        <button onClick={() => setZeroInCar(car)} style={{
+          width: "100%", marginTop: 14, padding: "13px", borderRadius: 12, cursor: "pointer",
+          background: "rgba(207,170,90,0.12)", color: "#cfaa5a", border: "1px solid rgba(207,170,90,0.35)",
+          fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700,
+        }}>Zero in on this one →</button>
       </div>
     );
   };
@@ -2459,6 +2641,8 @@ function CarMatchmaker({ onHome }) {
           { kind: "budgetUp", label: "Show me a higher budget", icon: "⬆️" },
         ];
         return (<>
+          {zeroInCar && <ZeroIn car={zeroInCar} answers={answers} onBack={() => setZeroInCar(null)} onNavigate={onNavigate} />}
+          {!zeroInCar && (<>
           <div style={{ textAlign: "center", marginBottom: 36, paddingTop: 10 }}>
             <SectionTag label="YOUR MATCHES" />
             <Title>We found your cars.</Title>
@@ -2536,6 +2720,7 @@ function CarMatchmaker({ onHome }) {
               to { opacity: 1; transform: translateY(0); }
             }
           `}</style>
+          </>)}
         </>);
 
       default:
@@ -2556,14 +2741,14 @@ function CarMatchmaker({ onHome }) {
       <div ref={containerRef} style={{ position: "relative", zIndex: 1, maxWidth: 540,
         margin: "0 auto", padding: "36px 20px", minHeight: "100vh" }}>
 
-        {onHome && (
+        {onHome && !zeroInCar && (
           <button onClick={onHome} style={{ background: "none", border: "none", color: "rgba(207,170,90,0.75)",
             cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 600,
             padding: "2px 0", marginBottom: 16 }}>‹ Home</button>
         )}
 
         {/* Progress bar */}
-        {currentStep.phase !== "intro" && currentStep.id !== "loading" && (
+        {!zeroInCar && currentStep.phase !== "intro" && currentStep.id !== "loading" && (
           <div style={{ display: "flex", gap: 4, marginBottom: 28 }}>
             {Object.keys(PHASE_LABELS).map((phase, i) => (
               <div key={phase} style={{ flex: 1, height: 2.5, borderRadius: 2,
@@ -2666,7 +2851,7 @@ function Home({ go }) {
 
 export default function App() {
   const [view, setView] = useState("home");
-  if (view === "matchmaker") return <CarMatchmaker onHome={() => setView("home")} />;
+  if (view === "matchmaker") return <CarMatchmaker onHome={() => setView("home")} onNavigate={setView} />;
   if (view === "decoder") return <DealDecoder onHome={() => setView("home")} />;
   if (view === "repair") return <RepairCheck onHome={() => setView("home")} />;
   return <Home go={setView} />;
