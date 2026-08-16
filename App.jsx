@@ -1528,7 +1528,12 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
     : "roughly 3–5 years old — where the steepest depreciation is already behind it";
   const trimWord = trim === "loaded" ? "a top trim" : trim === "essentials" ? "a base or mid trim" : "a mid trim";
   const mileWord = mileage === "low" ? "lower-mileage" : mileage === "high" ? "higher-mileage" : "average-mileage";
-  const levers = ["Drop one trim level", "Go a year or two older", "Accept a few more miles on a reliable car"];
+  const dynamicLevers = [];
+  if (trim === "loaded") dynamicLevers.push({ label: "Drop to a mid trim", act: () => setTrim("middle") });
+  else if (trim === "middle") dynamicLevers.push({ label: "Drop to the essentials trim", act: () => setTrim("essentials") });
+  if (condition === "new") dynamicLevers.push({ label: "Buy a few years used instead", act: () => setCondition("used") });
+  if (mileage === "low") dynamicLevers.push({ label: "Accept average mileage", act: () => setMileage("balanced") });
+  else if (mileage === "balanced") dynamicLevers.push({ label: "Accept higher mileage to save", act: () => setMileage("high") });
 
   const wrap = (children) => (
     <div style={{ minHeight: "100vh", background: K.bg, color: K.text, fontFamily: "'DM Sans', sans-serif", padding: "28px 20px 60px", maxWidth: 560, margin: "0 auto" }}>
@@ -1629,9 +1634,20 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
         </div>
         <div style={{ fontSize: 14, lineHeight: 1.55, color: K.dim }}>{budget.msg}</div>
         {budget.level !== "green" && (
-          <div style={{ marginTop: 10 }}>
-            <div style={{ fontSize: 12, color: K.faint, marginBottom: 6 }}>Levers to stay comfortable:</div>
-            {levers.map((l, i) => (<div key={i} style={{ display: "flex", gap: 8, marginBottom: 4 }}><span style={{ color: K.gold }}>›</span><span style={{ fontSize: 13.5, color: K.dim }}>{l}</span></div>))}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, color: K.faint, marginBottom: 8 }}>Tap a lever to lower the target:</div>
+            {dynamicLevers.length > 0 ? dynamicLevers.map((l, i) => (
+              <button key={i} onClick={l.act} style={{
+                display: "block", width: "100%", textAlign: "left", cursor: "pointer",
+                background: "rgba(255,255,255,0.04)", border: `1px solid ${K.line}`, borderRadius: 10,
+                padding: "11px 14px", marginBottom: 8, color: K.text, fontFamily: "'DM Sans', sans-serif",
+                fontSize: 13.5, fontWeight: 600,
+              }}>↓&nbsp; {l.label}</button>
+            )) : (
+              <div style={{ fontSize: 13, color: K.dim, lineHeight: 1.55 }}>
+                You've already dialed this to its most affordable setup. If it's still over budget, this car may simply be a stretch right now — and knowing that is the honest, useful part.
+              </div>
+            )}
           </div>
         )}
       </div>
