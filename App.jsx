@@ -1546,11 +1546,20 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
     </div>
   );
   const nextBtn = (
-    <button onClick={() => setStep(step + 1)} disabled={!canNext()} style={{
-      width: "100%", marginTop: 20, padding: "15px", borderRadius: 14, cursor: canNext() ? "pointer" : "default",
-      background: canNext() ? K.gold : "rgba(255,255,255,0.06)", color: canNext() ? "#1b1915" : "rgba(237,232,220,0.3)",
-      border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700,
-    }}>Continue</button>
+    <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+      {step > 0 && (
+        <button onClick={() => setStep(step - 1)} style={{
+          flex: "0 0 auto", padding: "15px 22px", borderRadius: 14, cursor: "pointer",
+          background: "transparent", color: K.dim, border: `1px solid ${K.line}`,
+          fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600,
+        }}>Back</button>
+      )}
+      <button onClick={() => setStep(step + 1)} disabled={!canNext()} style={{
+        flex: 1, padding: "15px", borderRadius: 14, cursor: canNext() ? "pointer" : "default",
+        background: canNext() ? K.gold : "rgba(255,255,255,0.06)", color: canNext() ? "#1b1915" : "rgba(237,232,220,0.3)",
+        border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700,
+      }}>Continue</button>
+    </div>
   );
   const h1 = (t) => <h1 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 33, lineHeight: 1.1, margin: "0 0 8px" }}>{t}</h1>;
   const sub = (t) => <p style={{ color: K.dim, fontSize: 14.5, lineHeight: 1.5, margin: "0 0 22px" }}>{t}</p>;
@@ -1633,7 +1642,7 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
     </div>
 
     <button onClick={() => onNavigate && onNavigate("decoder")} style={{ width: "100%", padding: "15px", borderRadius: 14, cursor: "pointer", background: K.gold, color: "#1b1915", border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Found one? Decode the deal →</button>
-    <button onClick={onBack} style={{ width: "100%", padding: "14px", borderRadius: 14, cursor: "pointer", background: "transparent", color: K.dim, border: `1px solid ${K.line}`, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600 }}>‹ Back to matches</button>
+    <button onClick={() => setStep(step - 1)} style={{ width: "100%", padding: "14px", borderRadius: 14, cursor: "pointer", background: "transparent", color: K.dim, border: `1px solid ${K.line}`, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600 }}>‹ Back a step</button>
 
     <div style={{ fontSize: 11.5, color: K.faint, lineHeight: 1.5, marginTop: 16, textAlign: "center" }}>
       Target prices are estimates from current listings and your choices — a smart starting point, not an exact quote.
