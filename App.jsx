@@ -1465,22 +1465,23 @@ function MoreRow({ car, finance }) {
   );
 }
 
-function Toggle({ label, sub, on, onToggle }) {
+function Toggle({ label, sub, on, onToggle, disabled }) {
+  const active = on && !disabled;
   return (
-    <button onClick={onToggle} style={{
+    <button onClick={disabled ? undefined : onToggle} disabled={disabled} style={{
       display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
-      gap: 12, background: on ? "rgba(207,170,90,0.10)" : "rgba(255,255,255,0.03)",
-      border: `1px solid ${on ? "rgba(207,170,90,0.4)" : "rgba(255,255,255,0.08)"}`,
-      borderRadius: 12, padding: "13px 15px", marginBottom: 9, cursor: "pointer",
-      fontFamily: "'DM Sans', sans-serif", textAlign: "left",
+      gap: 12, background: active ? "rgba(207,170,90,0.10)" : "rgba(255,255,255,0.03)",
+      border: `1px solid ${active ? "rgba(207,170,90,0.4)" : "rgba(255,255,255,0.08)"}`,
+      borderRadius: 12, padding: "13px 15px", marginBottom: 9, cursor: disabled ? "default" : "pointer",
+      fontFamily: "'DM Sans', sans-serif", textAlign: "left", opacity: disabled ? 0.45 : 1,
     }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: on ? "#cfaa5a" : "#ede8dc" }}>{label}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: active ? "#cfaa5a" : "#ede8dc" }}>{label}</div>
         {sub && <div style={{ fontSize: 12, color: "rgba(237,232,220,0.45)", marginTop: 2 }}>{sub}</div>}
       </div>
       <div style={{ width: 42, height: 24, borderRadius: 20, flexShrink: 0, position: "relative",
-        background: on ? "#cfaa5a" : "rgba(255,255,255,0.15)", transition: "background 0.15s ease" }}>
-        <div style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 20, height: 20, borderRadius: "50%",
+        background: active ? "#cfaa5a" : "rgba(255,255,255,0.15)", transition: "background 0.15s ease" }}>
+        <div style={{ position: "absolute", top: 2, left: active ? 20 : 2, width: 20, height: 20, borderRadius: "50%",
           background: "#1b1915", transition: "left 0.15s ease" }} />
       </div>
     </button>
@@ -1531,7 +1532,7 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
   const range = Math.max(0, high - low);
   const conditionPos = condition === "new" ? 0.72 : 0.34;
   const trimAdj = trim === "loaded" ? 0.16 : trim === "essentials" ? -0.16 : 0;
-  const mileAdj = mileage === "high" ? -0.06 : mileage === "low" ? 0.06 : 0;
+  const mileAdj = condition === "new" ? 0 : (mileage === "high" ? -0.06 : mileage === "low" ? 0.06 : 0);
   const center = Math.min(0.88, Math.max(0.16, conditionPos + trimAdj + mileAdj));
   const round1k = (n) => Math.round(n / 1000) * 1000;
   const tLow = round1k(low + Math.max(0, center - 0.13) * range);
@@ -1550,6 +1551,9 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
     : "roughly 3–5 years old — where the steepest depreciation is already behind it";
   const trimWord = trim === "loaded" ? "a top trim" : trim === "essentials" ? "a base or mid trim" : "a mid trim";
   const mileWord = mileage === "low" ? "lower-mileage" : mileage === "high" ? "higher-mileage" : "average-mileage";
+  const shopDesc = condition === "new"
+    ? `${trimWord} ${name} — ${yearGuide}.`
+    : `${trimWord}, ${mileWord} ${name} — ${yearGuide}.`;
 
   const wrap = (children) => (
     <div style={{ minHeight: "100vh", background: K.bg, color: K.text, fontFamily: "'DM Sans', sans-serif", padding: "28px 20px 60px", maxWidth: 560, margin: "0 auto" }}>
@@ -1631,7 +1635,7 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
     <div style={{ border: "1px solid rgba(207,170,90,0.35)", background: "rgba(207,170,90,0.06)", borderRadius: 16, padding: "20px", marginBottom: 16 }}>
       <div style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: 700, color: K.gold, marginBottom: 10 }}>GO SHOP FOR</div>
       <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 23, lineHeight: 1.3, color: K.text, marginBottom: 14 }}>
-        {trimWord}, {mileWord} {name} — {yearGuide}.
+        {shopDesc}
       </div>
       <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
         <div><div style={{ fontSize: 11.5, color: K.faint, marginBottom: 2 }}>Target price</div>
@@ -1646,7 +1650,7 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
       <div style={{ fontSize: 12.5, color: K.faint, lineHeight: 1.5, marginBottom: 14 }}>Flip these on and off — watch the price and budget check move with each one.</div>
       <Toggle label="Nicer trim" sub="Leather, tech, top-of-the-line" on={trim === "loaded"} onToggle={() => setTrim(trim === "loaded" ? "essentials" : "loaded")} />
       <Toggle label="Buy it new" sub="vs. a few years used" on={condition === "new"} onToggle={() => setCondition(condition === "new" ? "used" : "new")} />
-      <Toggle label="Low mileage only" sub="vs. accepting higher miles to save" on={mileage === "low"} onToggle={() => setMileage(mileage === "low" ? "high" : "low")} />
+      <Toggle label="Low mileage only" sub={condition === "new" ? "Not applicable — a new car has no miles" : "vs. accepting higher miles to save"} on={mileage === "low"} disabled={condition === "new"} onToggle={() => setMileage(mileage === "low" ? "high" : "low")} />
     </div>
 
     {budget && (
