@@ -1465,6 +1465,25 @@ function MoreRow({ car, finance }) {
   );
 }
 
+function Segmented({ label, options, value, onChange }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11.5, color: "rgba(237,232,220,0.4)", marginBottom: 6, fontFamily: "'DM Sans', sans-serif" }}>{label}</div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {options.map((o) => (
+          <button key={o.v} onClick={() => onChange(o.v)} style={{
+            flex: 1, padding: "9px 4px", borderRadius: 10, cursor: "pointer", fontSize: 12.5, fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif", transition: "all 0.12s ease",
+            background: value === o.v ? "rgba(207,170,90,0.18)" : "rgba(255,255,255,0.03)",
+            border: value === o.v ? "1px solid #cfaa5a" : "1px solid rgba(255,255,255,0.08)",
+            color: value === o.v ? "#cfaa5a" : "rgba(237,232,220,0.55)",
+          }}>{o.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ZeroInOption({ label, sub, selected, onClick }) {
   return (
     <button onClick={onClick} style={{
@@ -1521,19 +1540,13 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
   if (comfMo > 0) {
     if (tMoHigh <= comfMo) budget = { level: "green", msg: `That lands comfortably inside your $${comfMo}/mo — no stretching needed. Nicely done.` };
     else if (ceilMo > 0 && tMoHigh <= ceilMo) budget = { level: "gold", msg: `This nudges toward the top of your range (about $${tMoHigh}/mo vs your $${comfMo}/mo comfort zone). You can — but remember, every $50/mo you don't spend is roughly $3,600 back in your pocket over a 6-year loan.` };
-    else budget = { level: "red", msg: `Heads up — this target runs past even your ceiling. Rather than stretch, pull one of the levers below and stay honest to your budget.` };
+    else budget = { level: "red", msg: `Heads up — this target runs past even your ceiling. Rather than stretch, tune the toggles above to dial it back into your budget.` };
   }
 
   const yearGuide = condition === "new" ? "the newest one or two model years"
     : "roughly 3–5 years old — where the steepest depreciation is already behind it";
   const trimWord = trim === "loaded" ? "a top trim" : trim === "essentials" ? "a base or mid trim" : "a mid trim";
   const mileWord = mileage === "low" ? "lower-mileage" : mileage === "high" ? "higher-mileage" : "average-mileage";
-  const dynamicLevers = [];
-  if (trim === "loaded") dynamicLevers.push({ label: "Drop to a mid trim", act: () => setTrim("middle") });
-  else if (trim === "middle") dynamicLevers.push({ label: "Drop to the essentials trim", act: () => setTrim("essentials") });
-  if (condition === "new") dynamicLevers.push({ label: "Buy a few years used instead", act: () => setCondition("used") });
-  if (mileage === "low") dynamicLevers.push({ label: "Accept average mileage", act: () => setMileage("balanced") });
-  else if (mileage === "balanced") dynamicLevers.push({ label: "Accept higher mileage to save", act: () => setMileage("high") });
 
   const wrap = (children) => (
     <div style={{ minHeight: "100vh", background: K.bg, color: K.text, fontFamily: "'DM Sans', sans-serif", padding: "28px 20px 60px", maxWidth: 560, margin: "0 auto" }}>
@@ -1625,6 +1638,14 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
       </div>
     </div>
 
+    <div style={{ border: `1px solid ${K.line}`, background: "rgba(255,255,255,0.02)", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
+      <div style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: 700, color: K.gold, marginBottom: 12 }}>TUNE YOUR TARGET</div>
+      <Segmented label="Trim level" options={[{ v: "essentials", label: "Essentials" }, { v: "middle", label: "Mid" }, { v: "loaded", label: "Loaded" }]} value={trim} onChange={setTrim} />
+      <Segmented label="New or used" options={[{ v: "new", label: "New" }, { v: "used", label: "Used" }]} value={condition} onChange={setCondition} />
+      <Segmented label="Mileage" options={[{ v: "low", label: "Low" }, { v: "balanced", label: "Average" }, { v: "high", label: "Higher" }]} value={mileage} onChange={setMileage} />
+      <div style={{ fontSize: 11.5, color: K.faint, lineHeight: 1.5, marginTop: 4 }}>Flip any of these to see the price and budget check update instantly.</div>
+    </div>
+
     {budget && (
       <div style={{ border: `1px solid ${budget.level === "green" ? "rgba(130,173,106,0.4)" : budget.level === "gold" ? "rgba(207,170,90,0.4)" : "rgba(224,105,79,0.4)"}`,
         background: budget.level === "green" ? "rgba(130,173,106,0.08)" : budget.level === "gold" ? "rgba(207,170,90,0.07)" : "rgba(224,105,79,0.08)",
@@ -1633,23 +1654,6 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
           {budget.level === "green" ? "YOU'RE IN GREAT SHAPE" : "AN HONEST BUDGET CHECK"}
         </div>
         <div style={{ fontSize: 14, lineHeight: 1.55, color: K.dim }}>{budget.msg}</div>
-        {budget.level !== "green" && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 12, color: K.faint, marginBottom: 8 }}>Tap a lever to lower the target:</div>
-            {dynamicLevers.length > 0 ? dynamicLevers.map((l, i) => (
-              <button key={i} onClick={l.act} style={{
-                display: "block", width: "100%", textAlign: "left", cursor: "pointer",
-                background: "rgba(255,255,255,0.04)", border: `1px solid ${K.line}`, borderRadius: 10,
-                padding: "11px 14px", marginBottom: 8, color: K.text, fontFamily: "'DM Sans', sans-serif",
-                fontSize: 13.5, fontWeight: 600,
-              }}>↓&nbsp; {l.label}</button>
-            )) : (
-              <div style={{ fontSize: 13, color: K.dim, lineHeight: 1.55 }}>
-                You've already dialed this to its most affordable setup. If it's still over budget, this car may simply be a stretch right now — and knowing that is the honest, useful part.
-              </div>
-            )}
-          </div>
-        )}
       </div>
     )}
 
