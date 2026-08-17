@@ -1465,22 +1465,25 @@ function MoreRow({ car, finance }) {
   );
 }
 
-function Segmented({ label, options, value, onChange }) {
+function Toggle({ label, sub, on, onToggle }) {
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11.5, color: "rgba(237,232,220,0.4)", marginBottom: 6, fontFamily: "'DM Sans', sans-serif" }}>{label}</div>
-      <div style={{ display: "flex", gap: 6 }}>
-        {options.map((o) => (
-          <button key={o.v} onClick={() => onChange(o.v)} style={{
-            flex: 1, padding: "9px 4px", borderRadius: 10, cursor: "pointer", fontSize: 12.5, fontWeight: 600,
-            fontFamily: "'DM Sans', sans-serif", transition: "all 0.12s ease",
-            background: value === o.v ? "rgba(207,170,90,0.18)" : "rgba(255,255,255,0.03)",
-            border: value === o.v ? "1px solid #cfaa5a" : "1px solid rgba(255,255,255,0.08)",
-            color: value === o.v ? "#cfaa5a" : "rgba(237,232,220,0.55)",
-          }}>{o.label}</button>
-        ))}
+    <button onClick={onToggle} style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+      gap: 12, background: on ? "rgba(207,170,90,0.10)" : "rgba(255,255,255,0.03)",
+      border: `1px solid ${on ? "rgba(207,170,90,0.4)" : "rgba(255,255,255,0.08)"}`,
+      borderRadius: 12, padding: "13px 15px", marginBottom: 9, cursor: "pointer",
+      fontFamily: "'DM Sans', sans-serif", textAlign: "left",
+    }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: on ? "#cfaa5a" : "#ede8dc" }}>{label}</div>
+        {sub && <div style={{ fontSize: 12, color: "rgba(237,232,220,0.45)", marginTop: 2 }}>{sub}</div>}
       </div>
-    </div>
+      <div style={{ width: 42, height: 24, borderRadius: 20, flexShrink: 0, position: "relative",
+        background: on ? "#cfaa5a" : "rgba(255,255,255,0.15)", transition: "background 0.15s ease" }}>
+        <div style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 20, height: 20, borderRadius: "50%",
+          background: "#1b1915", transition: "left 0.15s ease" }} />
+      </div>
+    </button>
   );
 }
 
@@ -1639,11 +1642,11 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
     </div>
 
     <div style={{ border: `1px solid ${K.line}`, background: "rgba(255,255,255,0.02)", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
-      <div style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: 700, color: K.gold, marginBottom: 12 }}>TUNE YOUR TARGET</div>
-      <Segmented label="Trim level" options={[{ v: "essentials", label: "Essentials" }, { v: "middle", label: "Mid" }, { v: "loaded", label: "Loaded" }]} value={trim} onChange={setTrim} />
-      <Segmented label="New or used" options={[{ v: "new", label: "New" }, { v: "used", label: "Used" }]} value={condition} onChange={setCondition} />
-      <Segmented label="Mileage" options={[{ v: "low", label: "Low" }, { v: "balanced", label: "Average" }, { v: "high", label: "Higher" }]} value={mileage} onChange={setMileage} />
-      <div style={{ fontSize: 11.5, color: K.faint, lineHeight: 1.5, marginTop: 4 }}>Flip any of these to see the price and budget check update instantly.</div>
+      <div style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: 700, color: K.gold, marginBottom: 4 }}>TUNE YOUR TARGET</div>
+      <div style={{ fontSize: 12.5, color: K.faint, lineHeight: 1.5, marginBottom: 14 }}>Flip these on and off — watch the price and budget check move with each one.</div>
+      <Toggle label="Nicer trim" sub="Leather, tech, top-of-the-line" on={trim === "loaded"} onToggle={() => setTrim(trim === "loaded" ? "essentials" : "loaded")} />
+      <Toggle label="Buy it new" sub="vs. a few years used" on={condition === "new"} onToggle={() => setCondition(condition === "new" ? "used" : "new")} />
+      <Toggle label="Low mileage only" sub="vs. accepting higher miles to save" on={mileage === "low"} onToggle={() => setMileage(mileage === "low" ? "high" : "low")} />
     </div>
 
     {budget && (
