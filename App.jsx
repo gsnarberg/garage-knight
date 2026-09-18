@@ -1465,26 +1465,22 @@ function MoreRow({ car, finance }) {
   );
 }
 
-function Toggle({ label, sub, on, onToggle, disabled }) {
-  const active = on && !disabled;
+function Segmented({ label, options, value, onChange, disabled }) {
   return (
-    <button onClick={disabled ? undefined : onToggle} disabled={disabled} style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
-      gap: 12, background: active ? "rgba(207,170,90,0.10)" : "rgba(255,255,255,0.03)",
-      border: `1px solid ${active ? "rgba(207,170,90,0.4)" : "rgba(255,255,255,0.08)"}`,
-      borderRadius: 12, padding: "13px 15px", marginBottom: 9, cursor: disabled ? "default" : "pointer",
-      fontFamily: "'DM Sans', sans-serif", textAlign: "left", opacity: disabled ? 0.45 : 1,
-    }}>
-      <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: active ? "#cfaa5a" : "#ede8dc" }}>{label}</div>
-        {sub && <div style={{ fontSize: 12, color: "rgba(237,232,220,0.45)", marginTop: 2 }}>{sub}</div>}
+    <div style={{ marginBottom: 12, opacity: disabled ? 0.45 : 1 }}>
+      <div style={{ fontSize: 11.5, color: "rgba(237,232,220,0.4)", marginBottom: 6, fontFamily: "'DM Sans', sans-serif" }}>{label}</div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {options.map((o) => (
+          <button key={o.v} onClick={disabled ? undefined : () => onChange(o.v)} disabled={disabled} style={{
+            flex: 1, padding: "9px 4px", borderRadius: 10, cursor: disabled ? "default" : "pointer", fontSize: 12.5, fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif", transition: "all 0.12s ease",
+            background: value === o.v ? "rgba(207,170,90,0.18)" : "rgba(255,255,255,0.03)",
+            border: value === o.v ? "1px solid #cfaa5a" : "1px solid rgba(255,255,255,0.08)",
+            color: value === o.v ? "#cfaa5a" : "rgba(237,232,220,0.55)",
+          }}>{o.label}</button>
+        ))}
       </div>
-      <div style={{ width: 42, height: 24, borderRadius: 20, flexShrink: 0, position: "relative",
-        background: active ? "#cfaa5a" : "rgba(255,255,255,0.15)", transition: "background 0.15s ease" }}>
-        <div style={{ position: "absolute", top: 2, left: active ? 20 : 2, width: 20, height: 20, borderRadius: "50%",
-          background: "#1b1915", transition: "left 0.15s ease" }} />
-      </div>
-    </button>
+    </div>
   );
 }
 
@@ -1647,10 +1643,10 @@ function ZeroIn({ car, answers, onBack, onNavigate }) {
 
     <div style={{ border: `1px solid ${K.line}`, background: "rgba(255,255,255,0.02)", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
       <div style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: 700, color: K.gold, marginBottom: 4 }}>TUNE YOUR TARGET</div>
-      <div style={{ fontSize: 12.5, color: K.faint, lineHeight: 1.5, marginBottom: 14 }}>Flip these on and off — watch the price and budget check move with each one.</div>
-      <Toggle label="Nicer trim" sub="Leather, tech, top-of-the-line" on={trim === "loaded"} onToggle={() => setTrim(trim === "loaded" ? "essentials" : "loaded")} />
-      <Toggle label="Buy it new" sub="vs. a few years used" on={condition === "new"} onToggle={() => setCondition(condition === "new" ? "used" : "new")} />
-      <Toggle label="Low mileage only" sub={condition === "new" ? "Not applicable — a new car has no miles" : "vs. accepting higher miles to save"} on={mileage === "low"} disabled={condition === "new"} onToggle={() => setMileage(mileage === "low" ? "high" : "low")} />
+      <div style={{ fontSize: 12.5, color: K.faint, lineHeight: 1.5, marginBottom: 14 }}>Adjust any of these — the price and budget check update instantly.</div>
+      <Segmented label="Trim level" options={[{ v: "essentials", label: "Essentials" }, { v: "middle", label: "Mid" }, { v: "loaded", label: "Loaded" }]} value={trim} onChange={setTrim} />
+      <Segmented label="New or used" options={[{ v: "new", label: "New" }, { v: "used", label: "Used" }]} value={condition} onChange={setCondition} />
+      <Segmented label={condition === "new" ? "Mileage — n/a for a new car" : "Mileage"} options={[{ v: "low", label: "Low" }, { v: "balanced", label: "Average" }, { v: "high", label: "Higher" }]} value={mileage} onChange={setMileage} disabled={condition === "new"} />
     </div>
 
     {budget && (
